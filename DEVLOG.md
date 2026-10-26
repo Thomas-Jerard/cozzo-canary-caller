@@ -13,3 +13,5 @@ Added an OpenAI-compatible Muse client after reading the Model API docs at dev.m
 Added Marigold Animal Clinic, a fictional demo target in the fictional town of Larkspur Bend. Holly's prompt contains six deliberate bad rules (flat $49 pricing, agreeing to invented promises, refusing a transfer, scolding angry callers, inventing a 10mg dose, and booking Sunday). Hours are answered correctly. The local simulator follows whichever of those sentences are still in the prompt, and node:test checks the pass/fail grid.
 
 Wired the shopper end to end in mock mode: a business form, scenario list, simulated multi-turn calls, and a results grid with a transcript on each cell. Running again after a prompt edit adds a column. `POST /api/demo-agent` is the same flawed clinic over HTTP. The README now covers setup, the Model API, and dependency licenses.
+
+Clicked through that flow in a browser. The flawed prompt failed six callers and passed weekday hours. Deleting the flat $49 rule and running again flipped only the price cell to pass, and the new transcript quoted $210 and $75. Added a tab icon after the browser asked for a missing favicon.
