@@ -43,12 +43,15 @@ export type Target =
 
 export type ResearchResult = {
   mode: ShopMode;
+  /** Set when a live-run cap forced mock mode. */
+  notice?: string;
   businessSummary: string;
   scenarios: Scenario[];
 };
 
 export type RunResult = {
   mode: ShopMode;
+  notice?: string;
   id: string;
   createdAt: string;
   targetLabel: string;

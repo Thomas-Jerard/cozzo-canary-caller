@@ -1,5 +1,6 @@
 import { readBusiness } from "@/lib/input";
-import { MuseError } from "@/lib/muse";
+import { clientIp, reserveLive } from "@/lib/limits";
+import { MuseError, museMode } from "@/lib/muse";
 import { researchBusiness } from "@/lib/run";
 
 export const maxDuration = 300;
@@ -7,7 +8,10 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const business = readBusiness(await request.json());
-    const result = await researchBusiness(business);
+    const gate = museMode() === "live" ? reserveLive(clientIp(request), 1) : { live: true as const };
+    const result = await researchBusiness(business, {
+      forceMock: gate.live ? undefined : gate.reason,
+    });
     return Response.json(result);
   } catch (error) {
     return jsonError(error);

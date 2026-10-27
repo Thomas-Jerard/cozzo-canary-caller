@@ -9,9 +9,12 @@ import { JUDGE_RESPONSE_FORMAT, SCENARIO_SCHEMA } from "./schemas";
 import { looksLikeUrl, mockResearch, normalizeScenarios } from "./scenarios";
 import type { CallResult, ResearchResult, RunResult, Scenario, ShopMode, Target, Turn } from "./types";
 
-export async function researchBusiness(business: string): Promise<ResearchResult> {
-  if (museMode() === "mock") {
-    return { mode: "mock", ...mockResearch(business) };
+export async function researchBusiness(
+  business: string,
+  options: { forceMock?: string } = {},
+): Promise<ResearchResult> {
+  if (museMode() === "mock" || options.forceMock) {
+    return { mode: "mock", notice: options.forceMock, ...mockResearch(business) };
   }
   const raw = await museRespond({
     model: MUSE_MODELS.wonder,
@@ -37,13 +40,15 @@ export async function runCalls(input: {
   scenarios: Scenario[];
   target: Target;
   origin: string;
+  forceMock?: string;
 }): Promise<RunResult> {
-  const mode = museMode();
+  const mode: ShopMode = input.forceMock ? "mock" : museMode();
   const results = await mapPool(input.scenarios, 3, (scenario) =>
     runOne(scenario, input.target, input.origin, mode),
   );
   return {
     mode,
+    notice: input.forceMock,
     id: randomUUID(),
     createdAt: new Date().toISOString(),
     targetLabel: describeTarget(input.target),

@@ -213,6 +213,7 @@ export function Shopper() {
         </h2>
         {research ? (
           <>
+            {research.notice ? <p className="hint">{research.notice}</p> : null}
             <p>{research.businessSummary}</p>
             {business !== researchedBusiness ? (
               <p className="hint">
@@ -267,6 +268,7 @@ export function Shopper() {
                       <span className="sub">
                         {run.mode} · {run.targetLabel}
                       </span>
+                      {run.notice ? <span className="sub">{run.notice}</span> : null}
                     </th>
                   ))}
                 </tr>

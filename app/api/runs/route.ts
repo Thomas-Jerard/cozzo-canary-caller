@@ -1,5 +1,6 @@
 import { readRunRequest } from "@/lib/input";
-import { MuseError } from "@/lib/muse";
+import { clientIp, reserveLive } from "@/lib/limits";
+import { MuseError, museMode } from "@/lib/muse";
 import { runCalls } from "@/lib/run";
 
 export const maxDuration = 300;
@@ -8,7 +9,16 @@ export async function POST(request: Request) {
   try {
     const body = readRunRequest(await request.json());
     const origin = new URL(request.url).origin;
-    const result = await runCalls({ ...body, origin });
+    // One unit per scenario: a scenario is about seven Spark calls.
+    const gate =
+      museMode() === "live"
+        ? reserveLive(clientIp(request), body.scenarios.length)
+        : { live: true as const };
+    const result = await runCalls({
+      ...body,
+      origin,
+      forceMock: gate.live ? undefined : gate.reason,
+    });
     return Response.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Something went wrong.";
