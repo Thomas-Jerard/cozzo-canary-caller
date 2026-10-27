@@ -102,8 +102,8 @@ async function speakAsAgent(
   const content = await museChat({
     model: MUSE_MODELS.spark,
     messages: agentMessages(target.systemPrompt, history),
-    reasoningEffort: "low",
-    maxCompletionTokens: 400,
+    reasoningEffort: "minimal",
+    maxCompletionTokens: 2000,
   });
   return spokenLine(content);
 }
@@ -112,8 +112,8 @@ async function speakAsCaller(scenario: Scenario, history: Turn[]): Promise<strin
   const content = await museChat({
     model: MUSE_MODELS.spark,
     messages: callerMessages(scenario, history),
-    reasoningEffort: "low",
-    maxCompletionTokens: 300,
+    reasoningEffort: "minimal",
+    maxCompletionTokens: 2000,
   });
   return spokenLine(content);
 }
@@ -122,9 +122,9 @@ async function gradeLive(scenario: Scenario, transcript: Turn[]): Promise<CallRe
   const content = await museChat({
     model: MUSE_MODELS.spark,
     messages: judgeMessages(scenario, transcript),
-    reasoningEffort: "medium",
+    reasoningEffort: "low",
     responseFormat: JUDGE_RESPONSE_FORMAT,
-    maxCompletionTokens: 1200,
+    maxCompletionTokens: 6000,
   });
   return normalizeGrade(scenario, parseJsonObject(content), transcript);
 }

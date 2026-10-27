@@ -67,7 +67,13 @@ export async function museChat(options: {
   const data = await musePost("/chat/completions", body);
   const content = readChatContent(data);
   if (!content.trim()) {
-    throw new MuseError("Muse returned an empty chat completion.", 502);
+    const reason = readFinishReason(data);
+    throw new MuseError(
+      reason === "length"
+        ? "Muse spent the whole token budget on reasoning and returned no text."
+        : "Muse returned an empty chat completion.",
+      502,
+    );
   }
   return content;
 }
@@ -151,6 +157,14 @@ function readChatContent(data: unknown): string {
   const content = (choices[0] as { message?: { content?: unknown } }).message
     ?.content;
   return typeof content === "string" ? content : "";
+}
+
+function readFinishReason(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const choices = (data as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || !choices[0] || typeof choices[0] !== "object") return "";
+  const reason = (choices[0] as { finish_reason?: unknown }).finish_reason;
+  return typeof reason === "string" ? reason : "";
 }
 
 function readStatus(data: unknown): string {
