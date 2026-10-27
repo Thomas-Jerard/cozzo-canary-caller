@@ -15,3 +15,9 @@ Added Marigold Animal Clinic, a fictional demo target in the fictional town of L
 Wired the shopper end to end in mock mode: a business form, scenario list, simulated multi-turn calls, and a results grid with a transcript on each cell. Running again after a prompt edit adds a column. `POST /api/demo-agent` is the same flawed clinic over HTTP. The README now covers setup, the Model API, and dependency licenses.
 
 Clicked through that flow in a browser. The flawed prompt failed six callers and passed weekday hours. Deleting the flat $49 rule and running again flipped only the price cell to pass, and the new transcript quoted $210 and $75. Added a tab icon after the browser asked for a missing favicon.
+
+## 2026-10-27
+
+Ran the live path for the first time with a real Muse key. Wonder wrote six Marigold callers through the Responses API with structured output in about 21 seconds, and the schema came back as sent. Spark replies came back empty at first. The response showed `finish_reason: "length"` with all 300 tokens spent on reasoning. Speaking turns now use `reasoning_effort: "minimal"` with a larger cap, the grader uses `low`, and an empty reply now says when the budget ran out. After that, one live call (three caller turns, three agent turns, one grade) took about 11 seconds, and the flawed prompt failed the price check on a $49 quote.
+
+Added a budget guard for the hackathon credits: live units are capped per IP per hour and per day, in memory. Past a cap the request still answers, in mock mode, with a notice explaining why.
