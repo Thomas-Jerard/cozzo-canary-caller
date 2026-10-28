@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "next": "16.4.3",
@@ -21,6 +21,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
