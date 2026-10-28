@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CLINIC_BRIEF, FLAW_RULES, FLAWED_PROMPT } from "@/lib/clinic";
+import { VoiceCall } from "@/components/voice-call";
 import type { ResearchResult, RunResult, ShopMode, Target } from "@/lib/types";
 
 type Status = {
@@ -64,14 +65,15 @@ export function Shopper() {
     }
   }
 
+  function currentTarget(): Target {
+    return targetKind === "prompt" ? { kind: "prompt", systemPrompt } : { kind: "http", endpoint };
+  }
+
   async function runCalls() {
     if (!research) return;
     setBusy("run");
     setError(null);
-    const target: Target =
-      targetKind === "prompt"
-        ? { kind: "prompt", systemPrompt }
-        : { kind: "http", endpoint };
+    const target = currentTarget();
     try {
       const result = await postJson<RunResult>("/api/runs", {
         scenarios: research.scenarios,
@@ -249,9 +251,32 @@ export function Shopper() {
         )}
       </section>
 
+      <section className="section" aria-labelledby="voice-heading">
+        <h2 id="voice-heading">
+          <span className="section-index">3</span>Voice call
+        </h2>
+        {research && scenarios.length > 0 ? (
+          <>
+            <p className="hint">
+              Hear one caller ring Holly. The call is placed and graded on the
+              server, then played back with two browser voices. Muse has no
+              speech synthesis yet, so the voices come from your browser.
+            </p>
+            <VoiceCall
+              scenarios={scenarios}
+              target={currentTarget}
+              disabled={busy !== null}
+              onResult={(run) => setRuns((current) => [...current, run])}
+            />
+          </>
+        ) : (
+          <p className="hint">Write scenarios first, then place a call you can hear.</p>
+        )}
+      </section>
+
       <section className="section" aria-labelledby="results-heading">
         <h2 id="results-heading">
-          <span className="section-index">3</span>Results
+          <span className="section-index">4</span>Results
         </h2>
         {runs.length === 0 ? (
           <p className="hint">Run the calls to fill the grid. Each later run adds a column.</p>

@@ -428,3 +428,62 @@ footer {
     font-size: 2.1rem;
   }
 }
+
+/* Voice mode */
+.voice {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-top: 0.45rem solid var(--canary);
+}
+
+.voice-controls {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.voice select {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+}
+
+.voice .row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.voice .row button {
+  flex: none;
+  padding: 0.7rem 1rem;
+  background: var(--sheet);
+  border: 1px solid var(--ink);
+}
+
+.call-log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.call-log li {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--line);
+}
+
+.call-log li.caller {
+  border-left-color: var(--canary-deep);
+}
+
+.call-log li.speaking {
+  background: #fff3bf;
+  border-left-color: var(--canary);
+}
