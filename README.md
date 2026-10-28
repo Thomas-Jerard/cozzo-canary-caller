@@ -4,7 +4,7 @@ Cozzo Canary Caller is an AI mystery shopper for voice agents. Before a phone ag
 
 [Cozzo](https://cozzo.io) is an independent voice-agent benchmarking site. Cozzo the Canary is its mascot. This project is a fresh hackathon build in that spirit. It is not a copy of any other Cozzo repository.
 
-The product stress-tests the conversation a voice agent would have. This first pass runs those calls as text turns, so you can read a transcript in every cell. Audio comes later.
+The product stress-tests the conversation a voice agent would have. Calls run as text turns, so you can read a transcript in every cell. Voice mode plays one call out loud: the Canary caller and Holly speak in two different browser voices while the transcript fills in, and the grade lands when the call ends.
 
 ## Architecture
 
@@ -100,6 +100,12 @@ Docs used while building the client:
 
 Muse Spark always reasons. The client does not send `reasoning_effort: "none"` (the docs say that returns HTTP 400) and does not send `temperature` (the docs say the default of 1.0 is the tuned setting). Search grounding is not available on chat completions, so research goes through the Responses API. Caller and agent turns use `reasoning_effort: "low"`. Wonder research uses `reasoning.effort: "medium"`.
 
+## Voice mode
+
+Muse has no text-to-speech model. `/v1/models` lists `muse-voice-transcribe-1.0` for speech-to-text, and `/v1/audio/speech` returns 404. So the server places and grades the call through `/api/runs` (same caps, one live unit per call), and the browser speaks each turn with the Web Speech API. `lib/voices.ts` picks two different installed voices and also separates them by pitch.
+
+For audio in, **Say it** records the mic, resamples it to 16 kHz mono 16-bit WAV in the browser (`lib/wav.ts`), and posts it to `/api/transcribe`. That route calls Muse Voice Transcribe at `POST /v1/asr/transcribe` and returns the text as the caller's opening line. Each transcription also uses one live unit. In mock mode the route answers 503 and you type the line instead.
+
 ## Open-source dependencies
 
 Application code in this repository is MIT, copyright 2026 Thomas Voelker. See [LICENSE](LICENSE).
@@ -130,4 +136,4 @@ Built for the Meta Global AI Developer Hackathon, Indie track. The event started
 - `npm run build` — production build
 - `npm run start` — serve the production build
 - `npm run lint` — Next.js ESLint
-- `npm test` — node:test checks for the demo agent and the grader
+- `npm test` — node:test checks (run with tsx) for the demo agent, the grader, the caps, WAV encoding, and voice picking

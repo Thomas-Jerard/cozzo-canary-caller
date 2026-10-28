@@ -21,3 +21,12 @@ Clicked through that flow in a browser. The flawed prompt failed six callers and
 Ran the live path for the first time with a real Muse key. Wonder wrote six Marigold callers through the Responses API with structured output in about 21 seconds, and the schema came back as sent. Spark replies came back empty at first. The response showed `finish_reason: "length"` with all 300 tokens spent on reasoning. Speaking turns now use `reasoning_effort: "minimal"` with a larger cap, the grader uses `low`, and an empty reply now says when the budget ran out. After that, one live call (three caller turns, three agent turns, one grade) took about 11 seconds, and the flawed prompt failed the price check on a $49 quote.
 
 Added a budget guard for the hackathon credits: live units are capped per IP per hour and per day, in memory. Past a cap the request still answers, in mock mode, with a notice explaining why.
+
+## 2026-10-28
+
+Added voice mode. First I probed the Model API. `/v1/models` lists muse-wonder-1.0, muse-spark-1.1 to 1.3, muse-voice-transcribe-1.0, muse-image-1.0 and sam-3.1. None of them synthesizes speech, and `/v1/audio/speech` and `/v1/audio/transcriptions` both return 404. Transcription lives at `POST /v1/asr/transcribe` and wants 16 or 24 kHz mono 16-bit WAV. A 6.8-second test clip came back as text in about 2 seconds.
+
+So a voice call is placed and graded on the server through the same `/api/runs` path, with the same caps and one live unit per call, and the browser speaks it back with the Web Speech API. The caller and Holly get different voices and pitches, and the transcript fills in line by line as each turn is spoken. **Say it** records the mic, encodes WAV in the browser, and sends it to the new `/api/transcribe` route, which calls Muse Voice Transcribe and also counts against the caps. Tests now run under tsx so they work on Node 20.
+
+Checked it on production. A live price call took about 12 seconds to place and grade. Holly quoted the flat $49 twice and was graded a fail, and in the browser the six turns played in order and the grade showed at the end.
+
