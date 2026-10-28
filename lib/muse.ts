@@ -10,6 +10,7 @@ export const DEFAULT_MUSE_BASE_URL = "https://api.meta.ai/v1";
 export const MUSE_MODELS = {
   wonder: "muse-wonder-1.0",
   spark: "muse-spark-1.3",
+  transcribe: "muse-voice-transcribe-1.0",
 } as const;
 
 export type ReasoningEffort =
