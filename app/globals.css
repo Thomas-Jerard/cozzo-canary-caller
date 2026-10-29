@@ -487,3 +487,26 @@ footer {
   background: #fff3bf;
   border-left-color: var(--canary);
 }
+
+/* Voice mode: large, clear hit targets and a visible recording state. */
+button.big {
+  min-height: 48px;
+  min-width: 9rem;
+  padding: 0.7rem 1.3rem;
+  font-size: 1rem;
+  touch-action: manipulation;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.recording {
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
+}
+.rec-status {
+  margin: 0.5rem 0 0;
+  font-weight: 700;
+  color: #b42318;
+}

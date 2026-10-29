@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { pickVoices, type VoicePlan } from "@/lib/voices";
+import type { VoicePlan } from "@/lib/voices";
+import { loadVoicePlan, speakLine, speechAvailable, stopSpeech } from "@/lib/speech";
 import { encodeWav, resample } from "@/lib/wav";
 import type { CallResult, RunResult, Scenario, Target, Turn } from "@/lib/types";
 
@@ -9,7 +10,7 @@ type Phase = "idle" | "dialing" | "speaking" | "done";
 
 /**
  * Voice mode. The server places one call (same /api/runs path, same caps,
- * same grader), then the browser plays it back as a phone call: the Canary
+ * same grader), then the browser plays it back as a phone call: Cozzo the
  * caller and Holly each get their own Web Speech voice, and the transcript
  * fills in line by line as it is spoken.
  */
@@ -37,16 +38,16 @@ export function VoiceCall({
   const cancelled = useRef(false);
   const recorder = useRef<MediaRecorder | null>(null);
 
+  const inFlight = useRef(false);
+  const micBusy = useRef(false);
+
   useEffect(() => {
-    if (!speechAvailable()) return;
-    const load = () => {
-      plan.current = pickVoices(window.speechSynthesis.getVoices());
-    };
-    load();
-    window.speechSynthesis.addEventListener("voiceschanged", load);
+    void loadVoicePlan().then((loaded) => {
+      plan.current = loaded;
+    });
     return () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", load);
-      window.speechSynthesis.cancel();
+      stopSpeech();
+      recorder.current?.stream.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -54,8 +55,10 @@ export function VoiceCall({
   const busy = phase === "dialing" || phase === "speaking";
 
   async function placeCall() {
-    if (!scenario) return;
+    if (!scenario || inFlight.current) return;
+    inFlight.current = true;
     cancelled.current = false;
+    stopSpeech();
     setPhase("dialing");
     setHeard([]);
     setResult(null);
@@ -74,6 +77,8 @@ export function VoiceCall({
       const callResult = run.results[0];
       if (!callResult) throw new Error("The call came back empty.");
       setNotice(run.notice ?? `${run.mode === "live" ? "Live Muse call" : "Mock call"} · ${run.targetLabel}`);
+      // Re-check voices now: Chrome often has none at first paint.
+      if (!plan.current || !plan.current.agent.voice) plan.current = await loadVoicePlan();
       setPhase("speaking");
       for (let index = 0; index < callResult.transcript.length; index += 1) {
         if (cancelled.current) break;
@@ -89,42 +94,35 @@ export function VoiceCall({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The call failed.");
       setPhase("idle");
+    } finally {
+      inFlight.current = false;
     }
   }
 
   function say(turn: Turn): Promise<void> {
     const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-    if (!speechAvailable()) return pause(Math.min(4000, 600 + turn.text.length * 35));
-    return new Promise((resolve) => {
-      const voice = plan.current?.[turn.role === "caller" ? "caller" : "agent"];
-      const utterance = new SpeechSynthesisUtterance(turn.text);
-      if (voice?.voice) utterance.voice = voice.voice;
-      utterance.pitch = voice?.pitch ?? 1;
-      utterance.rate = voice?.rate ?? 1;
-      const done = () => {
-        clearTimeout(guard);
-        setTimeout(resolve, 350);
-      };
-      // Some browsers never fire `end`; never let the call hang on that.
-      const guard = setTimeout(done, 3000 + turn.text.length * 120);
-      utterance.onend = done;
-      utterance.onerror = done;
-      window.speechSynthesis.speak(utterance);
-    });
+    if (!speechAvailable() || !plan.current) return pause(Math.min(4000, 600 + turn.text.length * 35));
+    const setting = plan.current[turn.role === "caller" ? "caller" : "agent"];
+    return speakLine(turn.text, setting).then(() => pause(350));
   }
 
   function hangUp() {
     cancelled.current = true;
-    if (speechAvailable()) window.speechSynthesis.cancel();
+    stopSpeech();
   }
 
   async function toggleRecording() {
     if (recording === "on") {
-      recorder.current?.stop();
+      if (recorder.current?.state === "recording") recorder.current.stop();
       return;
     }
+    if (micBusy.current || recording === "sending") return;
+    micBusy.current = true;
     setError(null);
     try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+        throw Object.assign(new Error("unsupported"), { name: "NotSupportedError" });
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks: Blob[] = [];
       const media = new MediaRecorder(stream);
@@ -143,8 +141,10 @@ export function VoiceCall({
       };
       media.start();
       setRecording("on");
-    } catch {
-      setError("The microphone is not available. Type the opening line instead.");
+    } catch (cause) {
+      setError(micMessage(cause));
+    } finally {
+      micBusy.current = false;
     }
   }
 
@@ -177,23 +177,39 @@ export function VoiceCall({
               onChange={(event) => setOpening(event.target.value)}
               disabled={busy}
             />
-            <button type="button" onClick={() => void toggleRecording()} disabled={busy || recording === "sending"}>
-              {recording === "on" ? "Stop recording" : recording === "sending" ? "Transcribing…" : "Say it"}
+            <button
+              type="button"
+              className={`big${recording === "on" ? " recording" : ""}`}
+              aria-pressed={recording === "on"}
+              onClick={() => void toggleRecording()}
+              disabled={busy || recording === "sending"}
+            >
+              {recording === "on" ? "Stop and use it" : recording === "sending" ? "Transcribing…" : "Say it"}
             </button>
           </div>
+          {recording === "on" ? (
+            <p className="rec-status" role="status">
+              Recording. Speak the opening line, then press Stop and use it.
+            </p>
+          ) : null}
           <p className="hint">
-            Say it records your mic and Muse Voice Transcribe turns it into the
+            Press Say it once to start and again to stop. It records your mic and Muse Voice Transcribe turns it into the
             caller&apos;s first line. Leave it empty to use the scenario&apos;s line.
           </p>
         </div>
       </div>
       <div className="actions">
         {busy ? (
-          <button type="button" onClick={hangUp} disabled={phase === "dialing"}>
+          <button className="big" type="button" onClick={hangUp} disabled={phase === "dialing"}>
             {phase === "dialing" ? "Dialing…" : "Hang up"}
           </button>
         ) : (
-          <button className="primary" type="button" onClick={() => void placeCall()} disabled={disabled || !scenario}>
+          <button
+            className="primary big"
+            type="button"
+            onClick={() => void placeCall()}
+            disabled={disabled || !scenario || recording !== "off"}
+          >
             Place voice call
           </button>
         )}
@@ -209,7 +225,7 @@ export function VoiceCall({
         <ol className="call-log" aria-live="polite">
           {heard.map((turn, index) => (
             <li key={index} className={`${turn.role}${index === speakingIndex ? " speaking" : ""}`}>
-              <span className="who">{turn.role === "caller" ? "Canary caller" : "Holly"}</span>
+              <span className="who">{turn.role === "caller" ? "Cozzo (caller)" : "Holly (agent)"}</span>
               {turn.text}
             </li>
           ))}
@@ -234,8 +250,14 @@ export function VoiceCall({
   );
 }
 
-function speechAvailable(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
+function micMessage(cause: unknown): string {
+  const name = cause instanceof Error ? cause.name : "";
+  if (name === "NotAllowedError" || name === "SecurityError")
+    return "Mic access is blocked. Click the lock icon in the address bar, allow the microphone, and press Say it again. Or type the line.";
+  if (name === "NotFoundError") return "No microphone was found. Plug one in or type the opening line.";
+  if (name === "NotReadableError") return "Another app is using the microphone. Close it and press Say it again.";
+  if (name === "NotSupportedError") return "This browser cannot record audio. Use Chrome or Safari, or type the line.";
+  return "The microphone did not start. Press Say it again, or type the opening line.";
 }
 
 async function transcribe(blob: Blob): Promise<string> {
