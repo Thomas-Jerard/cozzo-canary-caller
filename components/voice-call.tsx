@@ -17,11 +17,13 @@ type Phase = "idle" | "dialing" | "speaking" | "done";
 export function VoiceCall({
   scenarios,
   target,
+  modeLabel,
   disabled,
   onResult,
 }: {
   scenarios: Scenario[];
   target: () => Target;
+  modeLabel: string;
   disabled: boolean;
   onResult: (run: RunResult) => void;
 }) {
@@ -76,7 +78,7 @@ export function VoiceCall({
       if (!response.ok) throw new Error(run.error || `The call failed (${response.status}).`);
       const callResult = run.results[0];
       if (!callResult) throw new Error("The call came back empty.");
-      setNotice(run.notice ?? `${run.mode === "live" ? "Live Muse call" : "Mock call"} · ${run.targetLabel}`);
+      setNotice(run.notice ?? `${run.mode === "live" ? "Live Muse call" : "Mock call"}, ${run.targetLabel}`);
       // Re-check voices now: Chrome often has none at first paint.
       if (!plan.current || !plan.current.agent.voice) plan.current = await loadVoicePlan();
       setPhase("speaking");
@@ -90,7 +92,7 @@ export function VoiceCall({
       setSpeakingIndex(-1);
       setResult(callResult);
       setPhase("done");
-      onResult({ ...run, targetLabel: `voice · ${run.targetLabel}` });
+      onResult({ ...run, targetLabel: `voice call, ${run.targetLabel}` });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The call failed.");
       setPhase("idle");
@@ -148,104 +150,133 @@ export function VoiceCall({
     }
   }
 
+  const status =
+    error ??
+    (recording === "on"
+      ? "Listening. Press again to stop and use it."
+      : recording === "sending"
+        ? "Transcribing…"
+        : phase === "dialing"
+          ? "Dialing…"
+          : phase === "speaking"
+            ? "In call"
+            : phase === "done"
+              ? "Call ended"
+              : "Press Say it to speak the opening line, or just place the call.");
+
   return (
     <div className="voice">
-      <div className="voice-controls">
-        <div>
-          <label htmlFor="voice-scenario">Caller</label>
-          <select
-            id="voice-scenario"
-            value={scenario?.id ?? ""}
-            onChange={(event) => setScenarioId(event.target.value)}
-            disabled={busy}
-          >
-            {scenarios.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
+      <div className="callcard">
+        <span className="who">Calling Holly (agent), {notice ?? modeLabel}</span>
+        <h3 className="name">{scenario?.title}</h3>
+        <button
+          type="button"
+          className={`mic${recording === "on" ? " on" : ""}`}
+          aria-pressed={recording === "on"}
+          aria-label={recording === "on" ? "Stop and use it" : "Say it"}
+          onClick={() => void toggleRecording()}
+          disabled={busy || recording === "sending"}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="12" rx="3" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+          </svg>
+        </button>
+        {recording === "on" || phase === "speaking" ? (
+          <div className="wave" aria-hidden="true">
+            {Array.from({ length: 14 }, (_, k) => (
+              <i key={k} style={{ ["--k" as string]: k }} />
             ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="voice-opening">Opening line (optional)</label>
-          <div className="row">
-            <input
-              id="voice-opening"
-              type="text"
-              value={opening}
-              placeholder={scenario?.turns[0] ?? ""}
-              onChange={(event) => setOpening(event.target.value)}
-              disabled={busy}
-            />
-            <button
-              type="button"
-              className={`big${recording === "on" ? " recording" : ""}`}
-              aria-pressed={recording === "on"}
-              onClick={() => void toggleRecording()}
-              disabled={busy || recording === "sending"}
-            >
-              {recording === "on" ? "Stop and use it" : recording === "sending" ? "Transcribing…" : "Say it"}
-            </button>
           </div>
+        ) : null}
+        <span className={`state${error ? " err" : ""}`} role={error ? "alert" : "status"}>
+          {status}
+        </span>
+        <div className="row">
           {recording === "on" ? (
-            <p className="rec-status" role="status">
-              Recording. Speak the opening line, then press Stop and use it.
-            </p>
+            <button type="button" className="btn ghost" onClick={() => void toggleRecording()}>
+              Stop and use it
+            </button>
+          ) : recording === "off" && !busy ? (
+            <button type="button" className="btn ghost" onClick={() => void toggleRecording()}>
+              Say it
+            </button>
           ) : null}
-          <p className="hint">
-            Press Say it once to start and again to stop. It records your mic and Muse Voice Transcribe turns it into the
-            caller&apos;s first line. Leave it empty to use the scenario&apos;s line.
-          </p>
+          {busy ? (
+            <button className="btn hang" type="button" onClick={hangUp} disabled={phase === "dialing"}>
+              {phase === "dialing" ? "Dialing…" : "Hang up"}
+            </button>
+          ) : (
+            <button
+              className="btn yel"
+              type="button"
+              onClick={() => void placeCall()}
+              disabled={disabled || !scenario || recording !== "off"}
+            >
+              Place voice call
+            </button>
+          )}
         </div>
+        {phase !== "idle" && !speechAvailable() ? (
+          <span className="who">This browser cannot speak, so the call plays as text only.</span>
+        ) : null}
       </div>
-      <div className="actions">
-        {busy ? (
-          <button className="big" type="button" onClick={hangUp} disabled={phase === "dialing"}>
-            {phase === "dialing" ? "Dialing…" : "Hang up"}
-          </button>
-        ) : (
-          <button
-            className="primary big"
-            type="button"
-            onClick={() => void placeCall()}
-            disabled={disabled || !scenario || recording !== "off"}
-          >
-            Place voice call
-          </button>
-        )}
+      <div className="vt">
+        <label className="f" htmlFor="voice-scenario" style={{ margin: 0 }}>
+          Caller
+        </label>
+        <select
+          id="voice-scenario"
+          value={scenario?.id ?? ""}
+          onChange={(event) => setScenarioId(event.target.value)}
+          disabled={busy}
+        >
+          {scenarios.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.title}
+            </option>
+          ))}
+        </select>
+        <label className="f" htmlFor="voice-opening" style={{ margin: 0 }}>
+          Opening line (optional)
+        </label>
+        <input
+          id="voice-opening"
+          type="text"
+          value={opening}
+          placeholder={scenario?.turns[0] ?? "Type it, or press Say it"}
+          onChange={(event) => setOpening(event.target.value)}
+          disabled={busy}
+        />
+        <span className="hint" style={{ margin: 0 }}>
+          Say it records your mic and Muse Voice Transcribe turns it into the
+          caller&apos;s first line. Leave it empty to use the scenario&apos;s line.
+          The voices come from your browser.
+        </span>
+        {heard.map((turn, index) => (
+          <div key={index} className={`m ${turn.role === "caller" ? "c" : "a"}${index === speakingIndex ? " speaking" : ""}`}>
+            <small>{turn.role === "caller" ? "Cozzo (caller)" : "Holly (agent)"}</small>
+            {turn.text}
+          </div>
+        ))}
+        {result ? (
+          <>
+            <div className="mark-row">
+              <span className={`cell ${result.passed ? "pass" : "fail"}`} style={{ cursor: "default" }}>
+                {result.passed ? "Pass" : "Fail"}
+              </span>
+              <span>{result.summary}</span>
+            </div>
+            <ul className="checks">
+              {result.checks.map((check) => (
+                <li key={check.expectation} className={check.met ? "met" : "missed"}>
+                  {check.met ? "Met" : "Missed"}: {check.expectation} {check.note}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </div>
-      {phase !== "idle" && !speechAvailable() ? <p className="hint">This browser cannot speak, so the call plays as text only.</p> : null}
-      {error ? (
-        <p className="alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {notice ? <p className="hint">{notice}</p> : null}
-      {heard.length > 0 ? (
-        <ol className="call-log" aria-live="polite">
-          {heard.map((turn, index) => (
-            <li key={index} className={`${turn.role}${index === speakingIndex ? " speaking" : ""}`}>
-              <span className="who">{turn.role === "caller" ? "Cozzo (caller)" : "Holly (agent)"}</span>
-              {turn.text}
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      {result ? (
-        <div className="mark-row">
-          <span className={`mark ${result.passed ? "pass" : "fail"}`}>{result.passed ? "Pass" : "Fail"}</span>
-          <p>{result.summary}</p>
-        </div>
-      ) : null}
-      {result ? (
-        <ul className="checks">
-          {result.checks.map((check) => (
-            <li key={check.expectation} className={check.met ? "met" : "missed"}>
-              {check.met ? "Met" : "Missed"}: {check.expectation} {check.note}
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }
