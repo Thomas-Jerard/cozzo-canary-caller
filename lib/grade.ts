@@ -83,7 +83,7 @@ export function gradeMock(scenario: Scenario, transcript: Turn[]): CallResult {
       return {
         expectation,
         met: false,
-        note: "Mock grading only knows the built-in Marigold scenario pack.",
+        note: "Not graded: mock mode only knows the built-in Marigold callers. Run again when live mode is back.",
       };
     }
     const met = grader.test(agent);

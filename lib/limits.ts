@@ -1,6 +1,6 @@
 /**
  * Live-run budget guard. Each live run spends Muse credits, so a visitor gets
- * a few per hour and the whole deployment gets a daily ceiling. Past either
+ * about six full runs per hour (one unit per scenario, a run is six) and the whole deployment gets a daily ceiling. Past either
  * cap the request still works, but in mock mode with the built-in callers.
  *
  * Counters live in memory, per server instance. That is a soft guard, not
@@ -21,7 +21,7 @@ export type LiveGate = { live: true } | { live: false; reason: string };
 
 /** Reserve `cost` live units for this IP, or say why the run must stay mock. */
 export function reserveLive(ip: string, cost: number, now = Date.now()): LiveGate {
-  const hourlyCap = numberFromEnv("LIVE_IP_HOURLY_CAP", 12);
+  const hourlyCap = numberFromEnv("LIVE_IP_HOURLY_CAP", 36);
   const dailyCap = numberFromEnv("LIVE_DAILY_CAP", 200);
 
   const today = new Date(now).toISOString().slice(0, 10);
