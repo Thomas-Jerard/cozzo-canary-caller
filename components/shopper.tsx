@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CLINIC_BRIEF, FLAW_RULES, FLAWED_PROMPT } from "@/lib/clinic";
 import { VoiceCall } from "@/components/voice-call";
 import type { ResearchResult, RunResult, ShopMode, Target } from "@/lib/types";
+import Canary from "./Canary";
 
 type Status = {
   mode: ShopMode;
@@ -92,7 +93,7 @@ export function Shopper() {
   return (
     <main className="sheet" aria-busy={busy !== null}>
       <header className="brand">
-        <Canary />
+        <span className="bird"><Canary pose="wave" size={64} title="Cozzo the Canary" /></span>
         <div>
           <p className="eyebrow">Cozzo</p>
           <h1>Canary Caller</h1>
@@ -435,17 +436,6 @@ function Transcript({
   );
 }
 
-function Canary() {
-  return (
-    <svg className="bird" viewBox="0 0 64 40" width="64" height="40" aria-hidden="true">
-      <ellipse cx="28" cy="22" rx="16" ry="11" fill="#f5c400" stroke="#1c1914" strokeWidth="1.7" />
-      <circle cx="36" cy="18" r="1.7" fill="#1c1914" />
-      <path d="M42 20 L58 15 L42 24 Z" fill="#1c1914" />
-      <path d="M18 20 C8 14 6 28 16 28" fill="none" stroke="#1c1914" strokeWidth="1.7" />
-      <path d="M24 30 L22 36 L30 31" fill="none" stroke="#1c1914" strokeWidth="1.7" />
-    </svg>
-  );
-}
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
