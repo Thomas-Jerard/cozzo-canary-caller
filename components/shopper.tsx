@@ -391,6 +391,11 @@ export function Shopper() {
                   <span>{runs.length === 1 ? "run" : "runs"}</span>
                 </div>
               </div>
+              {latest?.notice ? (
+                <p className="alert" role="status">
+                  {latest.notice}
+                </p>
+              ) : null}
               {allPassed && busy !== "run" ? (
                 <div className="say" style={{ marginBottom: 16 }}>
                   <Canary pose="cheer" size={72} title="Cozzo the Canary" />
@@ -406,7 +411,7 @@ export function Shopper() {
                         <th key={run.id} scope="col" className={index === runs.length - 1 && runs.length > 1 ? "col-new" : undefined}>
                           Run {index + 1}
                           <small>{run.targetLabel}</small>
-                          <small>{run.mode === "live" ? "Live" : "Mock"}</small>
+                          <small>{run.mode === "live" ? "Live" : run.notice ? "Mock, live limit reached" : "Mock"}</small>
                         </th>
                       ))}
                       {busy === "run" ? (
@@ -457,6 +462,47 @@ export function Shopper() {
                   </tbody>
                 </table>
               </div>
+              <ol className="rcards" aria-label="Pass or fail for each caller">
+                {scenarios.map((scenario) => (
+                  <li key={scenario.id} className="rcard">
+                    <h3 className="name">{scenario.title}</h3>
+                    <div className="rruns">
+                      {runs.map((run, index) => {
+                        const result = run.results.find((item) => item.scenarioId === scenario.id);
+                        const pressed = selection?.runId === run.id && selection.scenarioId === scenario.id;
+                        return (
+                          <div key={run.id} className="rrun">
+                            <small>Run {index + 1}</small>
+                            {result ? (
+                              <button
+                                type="button"
+                                className={`cell ${result.passed ? "pass" : "fail"}${pressed ? " sel" : ""}`}
+                                aria-pressed={pressed}
+                                aria-label={`${scenario.title}, run ${index + 1}, ${result.passed ? "pass" : "fail"}`}
+                                onClick={() => setSelection({ runId: run.id, scenarioId: scenario.id })}
+                              >
+                                {result.passed ? <CheckIcon /> : <CrossIcon />}
+                                {result.passed ? "Pass" : "Fail"}
+                              </button>
+                            ) : (
+                              <span className="hint">Missing</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {busy === "run" ? (
+                        <div className="rrun">
+                          <small>Run {runs.length + 1}</small>
+                          <span className="cell pend" aria-label="Running">
+                            <span className="bar" />
+                            Calling
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
               {selectedRun && selectedScenario && selectedResult ? (
                 <Transcript
                   title={selectedScenario.title}

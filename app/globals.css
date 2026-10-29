@@ -166,3 +166,11 @@ code{font-size:13px;background:var(--p1);padding:1px 4px;border-radius:4px}
 input[type=text]{height:44px}
 .verdict ul{list-style:none;padding-left:0}
 .callcard .state.err{background:rgba(255,255,255,.14);border-radius:var(--r);padding:var(--s2) var(--s3)}
+/* Phones: one stacked card per caller instead of the wide table. */
+.rcards{display:none;list-style:none;margin:0;padding:0;gap:var(--s3)}
+.rcard{border:1px solid var(--line);border-radius:var(--r);padding:var(--s3) var(--s4);background:#fff}
+.rcard h3{margin:0 0 var(--s2);font-size:var(--t-sm);line-height:1.35}
+.rruns{display:flex;flex-wrap:wrap;gap:var(--s3)}
+.rrun{display:flex;flex-direction:column;gap:var(--s1)}
+.rrun small{font-size:11px;color:var(--mute);font-weight:600}
+@media (max-width:760px){.tw{display:none}.rcards{display:grid}}
