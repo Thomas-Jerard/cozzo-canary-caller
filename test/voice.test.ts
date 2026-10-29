@@ -35,6 +35,17 @@ test("pickVoices gives the caller and Holly different voices", () => {
 
 test("pickVoices falls back to pitch when only one voice exists", () => {
   const plan = pickVoices([{ name: "Only", lang: "en-US" }]);
-  assert.equal(plan.caller.voice, null);
+  assert.equal(plan.caller.voice?.name, "Only");
+  assert.ok(plan.agent.pitch - plan.caller.pitch >= 0.6);
   assert.notEqual(plan.caller.pitch, plan.agent.pitch);
+});
+
+test("pickVoices does not read Female as Male", () => {
+  const plan = pickVoices([
+    { name: "Microsoft Zira - English (United States)", lang: "en-US" },
+    { name: "Google UK English Female", lang: "en-GB" },
+    { name: "Google UK English Male", lang: "en-GB" },
+  ]);
+  assert.equal(plan.caller.voice?.name, "Google UK English Male");
+  assert.notEqual(plan.agent.voice?.name, plan.caller.voice?.name);
 });

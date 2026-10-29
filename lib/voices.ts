@@ -1,30 +1,39 @@
 /**
  * Muse has no text-to-speech model, so voice mode speaks with the browser's
- * Web Speech API. This picks two different installed voices so the caller
- * and Holly never sound like the same person.
+ * Web Speech API. This picks two clearly different installed voices for the
+ * caller (Cozzo) and Holly, and always sets a wide pitch/rate gap so they
+ * stay distinct even when the browser only has one voice.
  */
-export type VoiceInfo = { name: string; lang: string };
+export type VoiceInfo = { name: string; lang: string; localService?: boolean };
 
-export type VoicePlan<V extends VoiceInfo> = {
-  caller: { voice: V | null; pitch: number; rate: number };
-  agent: { voice: V | null; pitch: number; rate: number };
-};
+export type VoiceSetting<V> = { voice: V | null; pitch: number; rate: number };
+export type VoicePlan<V extends VoiceInfo> = { caller: VoiceSetting<V>; agent: VoiceSetting<V> };
 
-const FEMALE_HINT = /(female|samantha|victoria|karen|moira|tessa|zira|aria|jenny|susan|allison|ava|serena|fiona|google us english|libby|sonia)/i;
-const MALE_HINT = /(male|daniel|alex|fred|david|mark|guy|ryan|tom|aaron|arthur|george|rishi|google uk english male)/i;
+const FEMALE = /\b(female|woman|samantha|victoria|karen|moira|tessa|zira|aria|jenny|susan|allison|ava|serena|fiona|libby|sonia|emma|michelle|nicky|kate|joanna|salli|kimberly|ivy|natasha|catherine|hazel|google us english|google uk english female)\b/i;
+const MALE = /\b(male|man|daniel|alex|fred|david|mark|guy|ryan|tom|aaron|arthur|george|rishi|oliver|james|christopher|eric|roger|steffan|brian|matthew|justin|joey|google uk english male)\b/i;
+
+export function voiceGender(name: string): "f" | "m" | "?" {
+  // Check female first: "female" contains "male".
+  if (FEMALE.test(name)) return "f";
+  if (MALE.test(name)) return "m";
+  return "?";
+}
 
 export function pickVoices<V extends VoiceInfo>(voices: V[]): VoicePlan<V> {
   const english = voices.filter((voice) => /^en/i.test(voice.lang));
   const pool = english.length > 0 ? english : voices;
-  const agent = pool.find((voice) => FEMALE_HINT.test(voice.name) && !/male/i.test(voice.name.replace(/female/i, ""))) ?? pool[0] ?? null;
+  const female = pool.filter((voice) => voiceGender(voice.name) === "f");
+  const male = pool.filter((voice) => voiceGender(voice.name) === "m");
+  const agent = female[0] ?? pool[0] ?? null;
   const caller =
-    pool.find((voice) => voice !== agent && MALE_HINT.test(voice.name)) ??
-    pool.find((voice) => voice !== agent && voice.lang !== agent?.lang) ??
+    male.find((voice) => voice !== agent) ??
+    pool.find((voice) => voice !== agent && voiceGender(voice.name) !== "f") ??
     pool.find((voice) => voice !== agent) ??
     null;
-  // Pitch keeps the two apart even when only one voice is installed.
+  const distinctGender = !!caller && !!agent && voiceGender(caller.name) !== voiceGender(agent.name);
   return {
-    caller: { voice: caller, pitch: caller ? 0.95 : 0.7, rate: 1.05 },
-    agent: { voice: agent, pitch: 1.15, rate: 1 },
+    // Same voice (or same gender): push pitch and rate far apart.
+    caller: { voice: caller ?? agent, pitch: distinctGender ? 0.9 : 0.7, rate: 0.95 },
+    agent: { voice: agent, pitch: distinctGender ? 1.1 : 1.4, rate: 1.05 },
   };
 }
