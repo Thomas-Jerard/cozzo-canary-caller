@@ -1,3 +1,4 @@
+import { isTactic } from "./attack";
 import type { Scenario, ScenarioKind } from "./types";
 
 const KINDS = new Set<ScenarioKind>([
@@ -7,6 +8,7 @@ const KINDS = new Set<ScenarioKind>([
   "angry",
   "edge",
   "straightforward",
+  "attack",
 ]);
 
 export function demoScenarios(): Scenario[] {
@@ -157,10 +159,12 @@ function normalizeScenario(item: unknown, index: number): Scenario {
   }
   const id =
     typeof row.id === "string" && row.id.trim() ? row.id.trim() : `scenario-${index + 1}`;
+  const tactics = Array.isArray(row.tactics) ? [...new Set(row.tactics.filter(isTactic))] : [];
   return {
+    ...(tactics.length ? { tactics } : {}),
     id,
     title,
-    kind: isKind(row.kind) ? row.kind : "edge",
+    kind: tactics.length ? "attack" : isKind(row.kind) && row.kind !== "attack" ? row.kind : "edge",
     persona: typeof row.persona === "string" && row.persona.trim() ? row.persona.trim() : "A caller",
     goal: typeof row.goal === "string" && row.goal.trim() ? row.goal.trim() : title,
     turns,

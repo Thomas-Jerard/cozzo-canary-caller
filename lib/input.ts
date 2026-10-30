@@ -13,9 +13,15 @@ export function readBusiness(body: unknown): string {
   return business.trim();
 }
 
-export function readRunRequest(body: unknown): { scenarios: Scenario[]; target: Target } {
+export function readAttackFlag(body: unknown): boolean {
+  return !!body && typeof body === "object" && (body as { attack?: unknown }).attack === true;
+}
+
+export function readRunRequest(body: unknown): { scenarios: Scenario[]; target: Target; business?: string } {
   const record = asRecord(body, "Send JSON with scenarios and a target.");
+  const business = typeof record.business === "string" ? record.business.trim().slice(0, 4000) : undefined;
   return {
+    business,
     scenarios: normalizeScenarios({ scenarios: record.scenarios }),
     target: readTarget(record.target),
   };
