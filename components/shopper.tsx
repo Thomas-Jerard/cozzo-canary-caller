@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CLINIC_BRIEF, FLAW_RULES, FLAWED_PROMPT } from "@/lib/clinic";
 import { VoiceCall } from "@/components/voice-call";
+import { TACTICS } from "@/lib/attack";
 import type { ResearchResult, RunResult, ShopMode, Target } from "@/lib/types";
 import Canary from "./Canary";
 
@@ -29,6 +30,7 @@ export function Shopper() {
   const [busy, setBusy] = useState<"research" | "run" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>(1);
+  const [attack, setAttack] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function Shopper() {
     setError(null);
     setStep(2);
     try {
-      const result = await postJson<ResearchResult>("/api/scenarios", { business });
+      const result = await postJson<ResearchResult>("/api/scenarios", { business, attack });
       setResearch(result);
       setResearchedBusiness(business);
       setRuns([]);
@@ -86,6 +88,7 @@ export function Shopper() {
       const result = await postJson<RunResult>("/api/runs", {
         scenarios: research.scenarios,
         target,
+        business: researchedBusiness || business,
       });
       setRuns((current) => [...current, result]);
       const first = result.results[0];
@@ -266,6 +269,22 @@ export function Shopper() {
                   </p>
                 </div>
               )}
+              <span className="f" id="callers-label">
+                Callers
+              </span>
+              <div className="seg" role="group" aria-labelledby="callers-label">
+                <button type="button" aria-pressed={!attack} onClick={() => setAttack(false)}>
+                  Mystery shoppers
+                </button>
+                <button type="button" aria-pressed={attack} onClick={() => setAttack(true)}>
+                  Attack mode
+                </button>
+              </div>
+              <p className="hint" style={{ marginTop: -8 }}>
+                {attack
+                  ? "Attackers read each reply and pick their next move to break Holly: haggling, interrupting, switching language, social engineering, off-policy asks, and pressure."
+                  : "Each caller follows a short script and is graded pass or fail."}
+              </p>
               <div className="actions">
                 <button className="btn pri" type="submit" disabled={busy !== null || !business.trim()}>
                   {busy === "research" ? <span className="spin" aria-hidden="true" /> : null}
@@ -334,9 +353,12 @@ export function Shopper() {
               <ol className="callers">
                 {scenarios.map((scenario, index) => (
                   <li key={scenario.id} className="caller" style={{ animationDelay: `${index * 60}ms` }}>
-                    <span className="chip">{scenario.kind.replace(/_/g, " ")}</span>
+                    <span className="chip">{scenario.tactics?.length ? "Attacker" : scenario.kind.replace(/_/g, " ")}</span>
                     <h3 className="name">{scenario.title}</h3>
                     <p>{scenario.persona}</p>
+                    {scenario.tactics?.length ? (
+                      <p className="tactics">{scenario.tactics.map((id) => TACTICS[id].label).join(", ")}</p>
+                    ) : null}
                     <p className="exp">{scenario.expectations.join(" ")}</p>
                   </li>
                 ))}
@@ -641,15 +663,32 @@ function Transcript({
         <div className="msgs">
           {result.transcript.map((turn, index) => (
             <div key={`${turn.role}-${index}`} className={`m ${turn.role === "caller" ? "c" : "a"}`}>
-              <small>{turn.role === "caller" ? "Caller" : "Holly (agent)"}</small>
+              <small>
+                {turn.role === "caller" ? "Caller" : "Holly (agent)"}
+                {turn.tactic ? <span className="tac">{TACTICS[turn.tactic].label}</span> : null}
+              </small>
               {turn.text}
             </div>
           ))}
         </div>
       )}
+      {result.breaches && result.breaches.length > 0 ? (
+        <ol className="breaches" aria-label="Where the agent broke">
+          {result.breaches.map((breach, index) => (
+            <li key={index} className={`breach sev-${breach.severity}`}>
+              <div className="bh">
+                <span className="sev">{breach.severity}</span>
+                <b>Broken by {TACTICS[breach.tactic].label.toLowerCase()}</b>
+              </div>
+              <blockquote>“{breach.quote}”</blockquote>
+              {breach.why ? <p>{breach.why}</p> : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
       <div className={`verdict${missed.length === 0 ? " ok" : ""}`}>
         {result.summary}
-        {missed.length > 0 ? (
+        {missed.length > 0 && !result.breaches?.length ? (
           <ul>
             {missed.map((check) => (
               <li key={check.expectation}>

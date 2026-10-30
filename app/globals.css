@@ -174,3 +174,14 @@ input[type=text]{height:44px}
 .rrun{display:flex;flex-direction:column;gap:var(--s1)}
 .rrun small{font-size:11px;color:var(--mute);font-weight:600}
 @media (max-width:760px){.tw{display:none}.rcards{display:grid}}
+.caller .tactics{margin-top:var(--s2);font-size:var(--t-xs);font-weight:600;color:var(--p7)}
+.m .tac{margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--p7);background:var(--p1);border-radius:5px;padding:1px 6px}
+.breaches{list-style:none;margin:0;padding:var(--s4);display:grid;gap:var(--s3);border-top:1px solid var(--line)}
+.breach{border:1px solid var(--line);border-left:4px solid var(--fail);border-radius:10px;padding:var(--s3) var(--s4);background:#fff}
+.breach.sev-medium,.breach.sev-low{border-left-color:var(--y)}
+.breach .bh{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;font-size:var(--t-sm)}
+.breach .sev{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:5px;padding:2px 7px;background:var(--fail1);color:var(--fail)}
+.breach.sev-medium .sev,.breach.sev-low .sev{background:var(--y1);color:var(--ink)}
+.breach blockquote{margin:var(--s2) 0 0;font-size:var(--t-sm);color:var(--ink);font-style:italic}
+.breach p{margin:var(--s1,4px) 0 0;font-size:var(--t-xs);color:var(--ink2)}
+.caller .exp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
