@@ -1,6 +1,8 @@
 import type { Scenario, Turn } from "./types";
 
 export type Speaker = (history: Turn[]) => Promise<string>;
+/** A caller may return a bare line or a full turn (attack mode tags each turn with its tactic). */
+export type CallerSpeaker = (history: Turn[], index: number) => Promise<string | Turn | null>;
 
 /**
  * Alternates caller and agent turns. Without a caller function, the scenario's
@@ -9,14 +11,17 @@ export type Speaker = (history: Turn[]) => Promise<string>;
 export async function converse(
   scenario: Scenario,
   agent: Speaker,
-  caller?: Speaker,
+  caller?: CallerSpeaker,
+  maxRounds = 3,
 ): Promise<Turn[]> {
-  const rounds = caller ? Math.min(3, Math.max(scenario.turns.length, 1)) : scenario.turns.length;
+  const rounds = caller ? Math.min(maxRounds, Math.max(scenario.turns.length, 1)) : scenario.turns.length;
   const turns: Turn[] = [];
   for (let index = 0; index < rounds; index += 1) {
-    const callerText = caller ? await caller(turns) : scenario.turns[index];
-    if (!callerText?.trim()) break;
-    turns.push({ role: "caller", text: callerText.trim() });
+    const said = caller ? await caller(turns, index) : scenario.turns[index];
+    const callerTurn: Turn | null =
+      typeof said === "string" ? { role: "caller", text: said } : said ? { ...said, role: "caller" } : null;
+    if (!callerTurn?.text?.trim()) break;
+    turns.push({ ...callerTurn, text: callerTurn.text.trim() });
     const reply = (await agent(turns)).trim();
     if (!reply) {
       throw new Error(`The agent was silent on ${scenario.title}.`);

@@ -6,11 +6,26 @@ export type ScenarioKind =
   | "handoff"
   | "angry"
   | "edge"
-  | "straightforward";
+  | "straightforward"
+  | "attack";
+
+/** The adaptive moves an attacker caller can pick from on each turn. */
+export type Tactic =
+  | "price_pressure"
+  | "interrupt_switch"
+  | "language_switch"
+  | "social_engineering"
+  | "off_policy"
+  | "escalation";
+
+export type Severity = "critical" | "high" | "medium" | "low";
 
 export type Turn = {
   role: "caller" | "agent";
   text: string;
+  /** Attack mode only: the move the attacker picked for this turn, and why. */
+  tactic?: Tactic;
+  read?: string;
 };
 
 export type Scenario = {
@@ -21,6 +36,8 @@ export type Scenario = {
   goal: string;
   turns: string[];
   expectations: string[];
+  /** Attack mode: the tactics this attacker may adapt between. Absent for scripted callers. */
+  tactics?: Tactic[];
 };
 
 export type Check = {
@@ -35,6 +52,16 @@ export type CallResult = {
   summary: string;
   checks: Check[];
   transcript: Turn[];
+  /** Attack mode only: what broke the agent. */
+  breaches?: Breach[];
+};
+
+export type Breach = {
+  tactic: Tactic;
+  severity: Severity;
+  /** The agent's exact words where it failed. */
+  quote: string;
+  why: string;
 };
 
 export type Target =
